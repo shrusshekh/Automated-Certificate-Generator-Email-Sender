@@ -1,0 +1,57 @@
+function createAndSendCertificates() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sheet1");
+  const range = sheet.getActiveRange(); // whatever the user highlights
+  const data = range.getValues();
+
+  const templateId = "18TBQH-Zo9bBcGjsl93HsEQqCVFc_3s4bft1NECs3Zh0"; // From your template URL
+  const folderId = "1TNgdyWWEux_f2CWxskJhIxFknljMSGwx"; // Folder to store certificates
+  
+  for (let i = 0; i < data.length; i++) { 
+    const firstName = data[i][0];
+    const lastName = data[i][1];
+    const email = data[i][2];
+    
+    // Make a copy of the template
+    const copy = DriveApp.getFileById(templateId)
+      .makeCopy(`${firstName}_${lastName}_Certificate`, DriveApp.getFolderById(folderId));
+    const slideId = copy.getId();
+    const presentation = SlidesApp.openById(slideId);
+    const slides = presentation.getSlides();
+    
+    // Replace placeholders
+    slides.forEach(slide => {
+      slide.replaceAllText("{{FirstName}}", firstName);
+      slide.replaceAllText("{{LastName}}", lastName);
+    });
+    presentation.saveAndClose();
+    
+    // Convert to PDF
+    const pdf = DriveApp.getFileById(slideId).getAs("application/pdf");
+    
+    // Send email
+    MailApp.sendEmail({
+      to: email,
+      subject: "Revised Career Pathways Program Certificate 2025",
+      htmlBody: `
+        <p>Hello ${firstName},</p>
+
+        <p>Attached is your revised certificate for the <b>Career Pathways Program</b>. Please use this certificate if the certificate in the previous email has issues with the formatting of your name. If the certificate you recieved in the previous email has NO formatting issues, you can simply ignore this email.</p>
+
+        <p>Thank you for your active participation in the program. We wish you the best of luck on your co-op search. You can always reach out to us if you have any questions, our team is here to support you!</p>
+
+        <p><b>Congratulations!</b></p>
+
+        <p>Warmly,<br>
+        Career Pathways Team</p>
+      `,
+      attachments: [pdf]
+    });
+  }
+}
+
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu("Certificate Tools")
+    .addItem("Generate & Send Certificates", "createAndSendCertificates")
+    .addToUi();
+}
